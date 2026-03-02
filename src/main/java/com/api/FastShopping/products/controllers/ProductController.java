@@ -4,12 +4,18 @@ import com.api.FastShopping.products.dtos.ProductDTO;
 import com.api.FastShopping.products.models.Product;
 import com.api.FastShopping.products.repositories.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/products")
@@ -25,6 +31,8 @@ public class ProductController {
     }
 
     @GetMapping
+    @Cacheable(value = "productSearch", key = "#name + '_' + #page + '_' + #size")
+    @Transactional(readOnly = true)
     public ResponseEntity<Page<Product>> getProducts(
             @RequestParam(required = false) String name,
             @RequestParam(defaultValue = "0") int page,
@@ -34,7 +42,7 @@ public class ProductController {
         Page<Product> products;
 
         if (name != null && !name.trim().isEmpty()) {
-            products = productRepository.findByNameContainingIgnoreCase(name, pageable);
+            products = productRepository.findByNameIgnoreCase(name, pageable);
         } else {
             products = productRepository.findAll(pageable);
         }
@@ -44,8 +52,11 @@ public class ProductController {
 
     // READ (Single Product by ID)
     @GetMapping("/{id}")
+    @Cacheable(value = "products", key = "#id")
+    @Transactional(readOnly = true)
     public ResponseEntity<Product> getProductById(@PathVariable String id) {
-        return productRepository.findById(id)
+        var u = UUID.fromString(id);
+        return productRepository.findById(u)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -53,7 +64,8 @@ public class ProductController {
     // UPDATE
     @PutMapping("/{id}")
     public ResponseEntity<Product> updateProduct(@PathVariable String id, @RequestBody ProductDTO productDetails) {
-        return productRepository.findById(id).map(existingProduct -> {
+        var u = UUID.fromString(id);
+        return productRepository.findById(u).map(existingProduct -> {
             existingProduct.setName(productDetails.name());
             existingProduct.setPrice(productDetails.price());
             Product updatedProduct = productRepository.save(existingProduct);
@@ -63,10 +75,12 @@ public class ProductController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProduct(@PathVariable String id) {
-        if (productRepository.existsById(id)) {
-            productRepository.deleteById(id);
+        var u = UUID.fromString(id);
+        try {
+            productRepository.deleteById(u);
             return ResponseEntity.noContent().build();
+        } catch (EmptyResultDataAccessException e) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
     }
 }

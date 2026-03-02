@@ -1,10 +1,63 @@
 spring:
-  application:
-    name: FastShopping
+  docker:
+    compose:
+      lifecycle-management: start-and-stop
+  threads:
+    virtual:
+      enabled: true
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=120s
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mydatabase
+    username: myuser
+    password: secret
+    hikari:
+      pool-name: FastShopping-Pool
+      maximum-pool-size: 80
+      minimum-idle: 40
+      connection-timeout: 3000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      auto-commit: false
+      register-mbeans: true
+
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: none
+    open-in-view: false
+    show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc.batch_size: 25
+        order_inserts: true
+        order_updates: true
+        jdbc.lob.non_contextual_creation: true
+
+server:
+  tomcat:
+    threads:
+      max: 500
+      min-spare: 50
+    max-connections: 2000
+    accept-count: 2000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  metrics:
+    enable:
+      jdbc: true
+      hikaricp: true
+    cache:
+      caffeine:
+        enabled: true
+
+logging:
+  level:
+    com.zaxxer.hikari: INFO
+    org.hibernate.SQL: WARN

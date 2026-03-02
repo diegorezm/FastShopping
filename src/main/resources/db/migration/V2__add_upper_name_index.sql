@@ -1,0 +1,1 @@
+CREATE INDEX idx_products_name_lower ON products (UPPER(name));
