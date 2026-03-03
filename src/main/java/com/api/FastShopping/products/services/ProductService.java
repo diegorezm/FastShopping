@@ -1,5 +1,6 @@
 package com.api.FastShopping.products.services;
 
+import com.api.FastShopping.products.dtos.CachedProductPage;
 import com.api.FastShopping.products.dtos.ProductDTO;
 import com.api.FastShopping.products.models.Product;
 import com.api.FastShopping.products.repositories.ProductRepository;
@@ -35,14 +36,24 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Product> findAll(String name, int page, int size) {
+    @Cacheable(value = "productSearch", key = "#name + '_' + #page + '_' + #size",
+            unless = "#result == null")
+    public CachedProductPage findAll(String name, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
 
-        if (name != null && !name.trim().isEmpty()) {
-            return productRepository.fuzzySearch(name, pageable);
+        Page<Product> result;
+        if (name != null && name.trim().length() >= 2) {
+            result = productRepository.fuzzySearch(name.trim(), pageable);
+        } else {
+            result = productRepository.findAll(pageable);
         }
 
-        return productRepository.findAll(pageable);
+        return new CachedProductPage(
+                result.getContent(),
+                result.getTotalElements(),
+                page,
+                size
+        );
     }
 
     @Transactional(readOnly = true)
