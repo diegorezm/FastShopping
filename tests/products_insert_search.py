@@ -11,27 +11,25 @@ class StepLoadShape(LoadTestShape):
     Lets you find the exact point where the system starts to degrade.
     """
     steps = [
-        (50,   5),    # warmup
-      (100,  10),
-        (200,  20),
-        (500,  50),
-        (1000, 100),
-        (2000, 200),
-        (3000, 300),
-       (5000, 500),
-        # (10000, 1000),
+        (50,    5,   90),   # warmup — longer to let JVM + Redis warm up
+        # (100,   10,  60),
+       # (200,   20,  60),
+        (500,   50,  60),
+        (1000,  100, 60),
+        (2000,  100, 60),
+        (3000,  100, 60),
+        (5000,  100, 60),
+        # (10000,  100, 30),
     ]
-    step_duration = 60  # seconds per step
 
     def tick(self):
         run_time = self.get_run_time()
-        step_index = int(run_time // self.step_duration)
-
-        if step_index >= len(self.steps):
-            return None  # test over
-
-        users, spawn_rate = self.steps[step_index]
-        return (users, spawn_rate)
+        elapsed = 0
+        for users, spawn_rate, duration in self.steps:
+            if run_time < elapsed + duration:
+                return (users, spawn_rate)
+            elapsed += duration
+        return None
 
 
 class ShoppingAPIUser(HttpUser):
@@ -181,14 +179,16 @@ class ShoppingAPIUser(HttpUser):
                 catch_response=True,
                 name="/api/products/[id] [PUT]"
             ) as response:
-                if response.status_code >= 500:
+                if response.status_code in (200, 202):  # accepts queued response
+                    response.success()
+                elif response.status_code >= 500:
                     response.failure(f"Server error: {response.status_code}")
                 else:
                     response.success()
 
         elif action == "delete":
             if len(self.my_products) <= 3:
-                self.create_product_and_store()
+                self.create_product_and_store()  # replenish instead of deleting
                 return
             product = random.choice(self.my_products)
             self.my_products.remove(product)
@@ -197,7 +197,9 @@ class ShoppingAPIUser(HttpUser):
                 catch_response=True,
                 name="/api/products/[id] [DELETE]"
             ) as response:
-                if response.status_code >= 500:
+                if response.status_code in (200, 202, 204):  # accepts queued response
+                    response.success()
+                elif response.status_code >= 500:
                     response.failure(f"Server error: {response.status_code}")
                 else:
                     response.success()
@@ -229,11 +231,11 @@ class ShoppingAPIUser(HttpUser):
             catch_response=True,
             name="/api/orders/[id]/cancel [PATCH]"
         ) as response:
-            if response.status_code == 200:
+            if response.status_code in (200, 202):  # accepts queued response
                 order["status"] = "CANCELLED"
                 response.success()
             elif response.status_code == 409:
-                order["status"] = "CANCELLED"
+                order["status"] = "CANCELLED"  # sync local state
                 response.success()
             elif response.status_code >= 500:
                 response.failure(f"Server error: {response.status_code}")
