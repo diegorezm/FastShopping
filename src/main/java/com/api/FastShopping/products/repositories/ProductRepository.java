@@ -13,17 +13,19 @@ import java.util.UUID;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, UUID> {
-    Page<Product> findByNameIgnoreCase(String name, Pageable pageable);
+    Page<Product> findByNameContainingIgnoreCase(String name, Pageable pageable);
 
     @Query(value = """
-        SELECT * FROM products
-        WHERE similarity(name, :name) > 0.3
-        ORDER BY similarity(name, :name) DESC
-        """,
+    SELECT * FROM products
+    WHERE name % :name
+    OR name ILIKE '%' || :name || '%'
+    ORDER BY similarity(name, :name) DESC
+    """,
             countQuery = """
-        SELECT COUNT(*) FROM products
-        WHERE similarity(name, :name) > 0.3
-        """,
+    SELECT COUNT(*) FROM products
+    WHERE name % :name
+    OR name ILIKE '%' || :name || '%'
+    """,
             nativeQuery = true)
     Page<Product> fuzzySearch(@Param("name") String name, Pageable pageable);
 
