@@ -1,7 +1,7 @@
 spring:
   docker:
     compose:
-      lifecycle-management: start-and-stop
+      lifecycle-management: none
   threads:
     virtual:
       enabled: true
@@ -12,20 +12,20 @@ spring:
       cache-null-values: false
   data:
     redis:
-      host: localhost
-      port: 6379
-
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   datasource:
-    url: jdbc:postgresql://localhost:5432/mydatabase
-    username: myuser
-    password: secret
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/mydatabase}
+    username: ${DB_USERNAME:myuser}
+    password: ${DB_PASSWORD:secret}
     hikari:
       pool-name: FastShopping-Pool
       # Bumped to 150 to absorb the Virtual Thread queue
-      maximum-pool-size: 50
-      minimum-idle: 10
+      maximum-pool-size: 80
+      auto-commit: false
+      minimum-idle: 40
       # Fail fast: Drop requests instantly rather than hanging for 3 seconds
-      connection-timeout: 2000
+      connection-timeout: 5000
       idle-timeout: 600000
       max-lifetime: 1800000
       # JMX overhead disabled for absolute maximum performance
@@ -38,12 +38,36 @@ spring:
     show-sql: false
     properties:
       hibernate:
-        jdbc.batch_size: 100
+        jdbc.batch_size: 50
+        generate_statistics: false
         order_inserts: true
         order_updates: true
         jdbc.lob.non_contextual_creation: true
 
-server:
-  tomcat:
-    max-connections: 2000
-    accept-count: 2000
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, metrics, caches
+      base-path: /actuator
+
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+    metrics:
+      enabled: true
+
+  metrics:
+    enable:
+      all: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+  health:
+    redis:
+      enabled: true
+    db:
+      enabled: true
