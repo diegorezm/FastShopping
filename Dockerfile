@@ -30,8 +30,8 @@ COPY --from=builder /app/build/libs/*.jar app.jar
 ENV JAVA_OPTS="\
   -XX:+UseZGC \
   -XX:+ZGenerational \
-  -Xms256m \
-  -Xmx1g \
+  -Xms512m \
+  -Xmx1536m \
   -XX:MaxMetaspaceSize=256m \
   -XX:+AlwaysPreTouch \
   -Djava.security.egd=file:/dev/./urandom"
