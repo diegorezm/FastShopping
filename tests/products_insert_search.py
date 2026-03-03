@@ -38,8 +38,10 @@ class ShoppingAPIUser(HttpUser):
     def on_start(self):
         self.my_products = []
         self.my_orders = []
-        self.create_product_and_store()
-        self.place_order_and_store()
+        for _ in range(3):
+            self.create_product_and_store()
+        if self.my_products:
+            self.place_order_and_store()
 
     # ---------------------------
     # Utility Methods
