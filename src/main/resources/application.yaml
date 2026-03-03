@@ -6,9 +6,14 @@ spring:
     virtual:
       enabled: true
   cache:
-    type: caffeine
-    caffeine:
-      spec: maximumSize=1000,expireAfterWrite=120s
+    type: redis
+    redis:
+      time-to-live: 120s        # TTL — cache expires after 2 mins
+      cache-null-values: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
 
   datasource:
     url: jdbc:postgresql://localhost:5432/mydatabase
@@ -16,13 +21,15 @@ spring:
     password: secret
     hikari:
       pool-name: FastShopping-Pool
-      maximum-pool-size: 80
-      minimum-idle: 40
-      connection-timeout: 3000
+      # Bumped to 150 to absorb the Virtual Thread queue
+      maximum-pool-size: 50
+      minimum-idle: 10
+      # Fail fast: Drop requests instantly rather than hanging for 3 seconds
+      connection-timeout: 2000
       idle-timeout: 600000
       max-lifetime: 1800000
-      auto-commit: false
-      register-mbeans: true
+      # JMX overhead disabled for absolute maximum performance
+      register-mbeans: false
 
   jpa:
     hibernate:
@@ -31,33 +38,12 @@ spring:
     show-sql: false
     properties:
       hibernate:
-        jdbc.batch_size: 25
+        jdbc.batch_size: 100
         order_inserts: true
         order_updates: true
         jdbc.lob.non_contextual_creation: true
 
 server:
   tomcat:
-    threads:
-      max: 500
-      min-spare: 50
     max-connections: 2000
     accept-count: 2000
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: "*"
-  metrics:
-    enable:
-      jdbc: true
-      hikaricp: true
-    cache:
-      caffeine:
-        enabled: true
-
-logging:
-  level:
-    com.zaxxer.hikari: INFO
-    org.hibernate.SQL: WARN
