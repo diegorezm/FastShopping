@@ -17,14 +17,12 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     @Query(value = """
         SELECT * FROM products
-        WHERE name ILIKE '%' || :name || '%'
-        OR similarity(name, :name) > 0.3
+        WHERE similarity(name, :name) > 0.3
         ORDER BY similarity(name, :name) DESC
         """,
             countQuery = """
         SELECT COUNT(*) FROM products
-        WHERE name ILIKE '%' || :name || '%'
-        OR similarity(name, :name) > 0.3
+        WHERE similarity(name, :name) > 0.3
         """,
             nativeQuery = true)
     Page<Product> fuzzySearch(@Param("name") String name, Pageable pageable);

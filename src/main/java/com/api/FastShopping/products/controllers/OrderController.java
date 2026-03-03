@@ -1,8 +1,10 @@
 package com.api.FastShopping.products.controllers;
 
+import com.api.FastShopping.products.dtos.CachedOrderPage;
 import com.api.FastShopping.products.dtos.OrderResponseDTO;
 import com.api.FastShopping.products.dtos.PlaceOrderDTO;
 import com.api.FastShopping.products.models.Order;
+import com.api.FastShopping.products.services.OrderQueryService;
 import com.api.FastShopping.products.services.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -17,6 +19,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class OrderController {
     private final OrderService orderService;
+    private final OrderQueryService orderQueryService;
 
     @PostMapping
     public ResponseEntity<OrderResponseDTO> placeOrder(@RequestBody PlaceOrderDTO dto) {
@@ -26,14 +29,14 @@ public class OrderController {
 
     @GetMapping("/{id}")
     public ResponseEntity<OrderResponseDTO> getOrder(@PathVariable UUID id) {
-        return ResponseEntity.ok(orderService.findById(id));
+        return ResponseEntity.ok(orderQueryService.findById(id));
     }
 
     @GetMapping
-    public ResponseEntity<Page<OrderResponseDTO>> getOrders(
+    public ResponseEntity<CachedOrderPage> getOrders(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(orderService.findAll(page, size));
+        return ResponseEntity.ok(orderQueryService.findAll(page, size));
     }
 
     @PatchMapping("/{id}/cancel")

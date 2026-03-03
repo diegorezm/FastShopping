@@ -27,6 +27,26 @@ public class RedisConfig {
                                         )
                                 )
                 )
+                .withCacheConfiguration("orderCount",
+                        RedisCacheConfiguration.defaultCacheConfig()
+                                .entryTtl(Duration.ofSeconds(30))
+                                .disableCachingNullValues()
+                                .serializeValuesWith(
+                                        RedisSerializationContext.SerializationPair.fromSerializer(
+                                                RedisSerializer.json()
+                                        )
+                                )
+                )
+                .withCacheConfiguration("orderPages",
+                        RedisCacheConfiguration.defaultCacheConfig()
+                                .entryTtl(Duration.ofSeconds(15))
+                                .disableCachingNullValues()
+                                .serializeValuesWith(
+                                        RedisSerializationContext.SerializationPair.fromSerializer(
+                                                RedisSerializer.json()
+                                        )
+                                )
+                )
                 .withCacheConfiguration("orders",
                         RedisCacheConfiguration.defaultCacheConfig()
                                 .entryTtl(Duration.ofSeconds(60))

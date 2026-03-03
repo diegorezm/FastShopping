@@ -1,9 +1,6 @@
 package com.api.FastShopping.products.services;
 
-import com.api.FastShopping.products.dtos.OrderItemDTO;
-import com.api.FastShopping.products.dtos.OrderItemResponseDTO;
-import com.api.FastShopping.products.dtos.OrderResponseDTO;
-import com.api.FastShopping.products.dtos.PlaceOrderDTO;
+import com.api.FastShopping.products.dtos.*;
 import com.api.FastShopping.products.models.Order;
 import com.api.FastShopping.products.models.OrderItem;
 import com.api.FastShopping.products.models.OrderStatus;
@@ -11,11 +8,10 @@ import com.api.FastShopping.products.models.Product;
 import com.api.FastShopping.products.repositories.OrderRepository;
 import com.api.FastShopping.products.repositories.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
+
 
 @Service
 @RequiredArgsConstructor
@@ -60,22 +57,6 @@ public class OrderService {
         return toResponse(saved);
     }
 
-    @Transactional(readOnly = true)
-    @Cacheable(value = "orders", key = "#id", unless = "#result == null")
-    public OrderResponseDTO findById(UUID id) {
-        Order order = orderRepository.findWithItemsById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Order not found"
-                ));
-        return toResponse(order);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<OrderResponseDTO> findAll(int page, int size) {
-        return orderRepository.findAll(
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
-        ).map(this::toResponse);
-    }
 
     @Transactional
     @CachePut(value = "orders", key = "#result.id", unless = "#result == null")
