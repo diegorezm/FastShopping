@@ -1,6 +1,8 @@
 package com.api.FastShopping.products.controllers;
 
+import com.api.FastShopping.products.dtos.CachedProductPage;
 import com.api.FastShopping.products.dtos.ProductDTO;
+import com.api.FastShopping.products.events.WriteEventProducer;
 import com.api.FastShopping.products.models.Product;
 import com.api.FastShopping.products.services.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -9,11 +11,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
 public class ProductController {
-
+    private final WriteEventProducer producer;
     private final ProductService productService;
 
     @PostMapping
@@ -23,12 +27,12 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<Product>> getProducts(
+    public ResponseEntity<CachedProductPage> getProducts(
             @RequestParam(required = false) String name,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
-        Page<Product> products = productService.findAll(name, page, size);
+        var products = productService.findAll(name, page, size);
         return ResponseEntity.ok(products);
     }
 
@@ -40,28 +44,22 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Product> updateProduct(
+    public ResponseEntity<Map<String, String>> updateProduct(
             @PathVariable String id,
-            @RequestBody ProductDTO productDetails) {
-
-        Product updated = productService.update(id, productDetails);
-
-        if (updated == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        return ResponseEntity.ok(updated);
+            @RequestBody ProductDTO dto) {
+        producer.publishProductUpdate(id, dto);
+        return ResponseEntity.accepted().body(Map.of(
+                "status", "QUEUED",
+                "message", "Product update is being processed"
+        ));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProduct(@PathVariable String id) {
-
-        boolean deleted = productService.delete(id);
-
-        if (!deleted) {
-            return ResponseEntity.notFound().build();
-        }
-
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<Map<String, String>> deleteProduct(@PathVariable String id) {
+        producer.publishProductDelete(id);
+        return ResponseEntity.accepted().body(Map.of(
+                "status", "QUEUED",
+                "message", "Product deletion is being processed"
+        ));
     }
 }
