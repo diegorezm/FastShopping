@@ -1,23 +1,47 @@
-from locust import HttpUser, task, between
+from locust import HttpUser, task, between, LoadTestShape
 from faker import Faker
 import random
 
 fake = Faker()
 
 
+class StepLoadShape(LoadTestShape):
+    """
+    Gradually steps up load, holds each level for 60s, then steps up again.
+    Lets you find the exact point where the system starts to degrade.
+    """
+    steps = [
+        (50,   5),    # warmup
+      (100,  10),
+        (200,  20),
+        (500,  50),
+        (1000, 100),
+        (2000, 200),
+        (3000, 300),
+       (5000, 500),
+        # (10000, 1000),
+    ]
+    step_duration = 60  # seconds per step
+
+    def tick(self):
+        run_time = self.get_run_time()
+        step_index = int(run_time // self.step_duration)
+
+        if step_index >= len(self.steps):
+            return None  # test over
+
+        users, spawn_rate = self.steps[step_index]
+        return (users, spawn_rate)
+
+
 class ShoppingAPIUser(HttpUser):
     wait_time = between(0.3, 1.0)
 
     def on_start(self):
-        """Each user builds their own private pool — no shared state"""
         self.my_products = []
         self.my_orders = []
-
-        # Seed 5 products and 2 orders per user
-        for _ in range(5):
-            self.create_product_and_store()
-        for _ in range(2):
-            self.place_order_and_store()
+        self.create_product_and_store()
+        self.place_order_and_store()
 
     # ---------------------------
     # Utility Methods
@@ -49,13 +73,11 @@ class ShoppingAPIUser(HttpUser):
     def place_order_and_store(self):
         if len(self.my_products) < 1:
             return
-
         selected = random.sample(self.my_products, k=min(3, len(self.my_products)))
         items = [
             {"productId": p["id"], "quantity": random.randint(1, 5)}
             for p in selected
         ]
-
         with self.client.post(
             "/api/orders",
             json={"items": items},
@@ -165,9 +187,8 @@ class ShoppingAPIUser(HttpUser):
                     response.success()
 
         elif action == "delete":
-            # Only delete if user has more than 3 products — keep their pool healthy
             if len(self.my_products) <= 3:
-                self.create_product_and_store()  # replenish instead
+                self.create_product_and_store()
                 return
             product = random.choice(self.my_products)
             self.my_products.remove(product)
@@ -212,7 +233,7 @@ class ShoppingAPIUser(HttpUser):
                 order["status"] = "CANCELLED"
                 response.success()
             elif response.status_code == 409:
-                order["status"] = "CANCELLED"  # sync local state
+                order["status"] = "CANCELLED"
                 response.success()
             elif response.status_code >= 500:
                 response.failure(f"Server error: {response.status_code}")
