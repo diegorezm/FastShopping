@@ -27,7 +27,16 @@ public class RedisConfig {
                                         )
                                 )
                 )
-                .withCacheConfiguration("orderCount",
+                .withCacheConfiguration("productSearch",
+                        RedisCacheConfiguration.defaultCacheConfig()
+                                .entryTtl(Duration.ofSeconds(30))
+                                .disableCachingNullValues()
+                                .serializeValuesWith(
+                                        RedisSerializationContext.SerializationPair.fromSerializer(
+                                                RedisSerializer.json()
+                                        )
+                                )
+                ).withCacheConfiguration("orderCount",
                         RedisCacheConfiguration.defaultCacheConfig()
                                 .entryTtl(Duration.ofSeconds(30))
                                 .disableCachingNullValues()
