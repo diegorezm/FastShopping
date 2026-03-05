@@ -152,7 +152,7 @@ git clone https://github.com/your-username/fastshop.git
 cd fastshop
 
 # Start everything (app + postgres + redis)
-docker compose up --build
+docker compose --compatibility up --build
 
 # API available at
 http://localhost:8080
